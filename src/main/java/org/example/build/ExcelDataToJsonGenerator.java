@@ -43,9 +43,8 @@ public class ExcelDataToJsonGenerator {
             if (wb.getNumberOfSheets() <= 0) throw new IllegalStateException("엑셀에 시트가 없습니다.");
             Sheet sh = wb.getSheetAt(0);
 
-            // B1 = app title
-            String appTitle = getString(sh, 0, 1, fmt);
-            if (appTitle.isBlank()) appTitle = "용어사전";
+            // notice
+            String notice = getString(sh, 0, 1, fmt);
 
             // Row 2: key headers (internal)
             // Row 3: view headers (display, Korean)
@@ -86,7 +85,7 @@ public class ExcelDataToJsonGenerator {
                 entries.add(m);
             }
 
-            String json = toJson(appTitle, columns, entries);
+            String json = toJson(notice, columns, entries);
 
             Files.writeString(output, json, StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -151,10 +150,10 @@ public class ExcelDataToJsonGenerator {
 
     // ===== JSON =====
 
-    private static String toJson(String appTitle, List<Column> columns, List<Map<String, String>> entries) {
+    private static String toJson(String notice, List<Column> columns, List<Map<String, String>> entries) {
         StringBuilder sb = new StringBuilder(4096);
         sb.append("{");
-        sb.append("\"appTitle\":\"").append(escapeJson(appTitle)).append("\",");
+        sb.append("\"notice\":\"").append(escapeJson(notice)).append("\",");
 
         sb.append("\"columns\":[");
         for (int i = 0; i < columns.size(); i++) {
@@ -203,7 +202,7 @@ public class ExcelDataToJsonGenerator {
                 case '\r': out.append("\\r"); break;
                 case '\t': out.append("\\t"); break;
                 default:
-                    if (ch <= 0x1F) out.append(String.format("\\u%04x", (int) ch));
+                    if (ch <= 0x1F || ch > 0x7E) out.append(String.format("\\u%04x", (int) ch));
                     else out.append(ch);
             }
         }
