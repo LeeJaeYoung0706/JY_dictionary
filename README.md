@@ -1,20 +1,20 @@
-스윙으로 만드는 사전 배포 대상 PC는 인터넷 없음 / Java 설치 없음 / Windows 환경을 기준 프로젝트 구조 요약 입력(원본 엑셀) src/main/resources/source/glossary.xlsx
+스윙으로 만드는 사전 배포 대상 PC는 인터넷 없음 / Java 설치 없음 / Windows 환경을 기준 프로젝트 구조 요약 입력(원본 엑셀) src/main/resources/source/data.xlsx
 
 빌드 시 생성되는 JSON
 
-build/generated-resources/glossary.json
+build/generated-resources/data.json
 
 배포 폴더(최종 산출물)
 
-build/dist/dictionary_example/
+build/dist/dictionary/
 
 배포 폴더 안에는 다음이 포함됩니다.
 
-project_name/ ├ dictionary_example.exe ├ jre/ (미니 Java 런타임) └ data/ └ glossary.json (엑셀 파싱 결과)
+dictionary/ dictionary.exe jre/ (미니 Java 런타임) data/data.json (엑셀 파싱 결과)
 
-운영(사용자 PC)에서는 data/glossary.json만 읽도록 구성합니다.
+운영(사용자 PC)에서는 data/data.json만 읽도록 구성합니다.
 
-엑셀 포맷 규칙 1행: B1에 appTitle (예: “엑셀로부터읽어오는 용어사전 …”)
+엑셀 포맷 규칙 1행: 참고 글귀 확인하지 않음.
 
 2행: key (Customer / Dept / Term 등 “내부 키”)
 
@@ -60,7 +60,7 @@ dir .\jre\bin\java.exe dir .\jre\lib\jvm.cfg
 
 산출물 위치 아래 폴더가 최종 배포본입니다.
 
-build/dist/dictionary_example/
+build/dist/dictionary/
 
 이 폴더를 그대로 압축해서 전달하면 됩니다.
 
@@ -68,7 +68,7 @@ build/dist/dictionary_example/
 
 압축 풀기
 
-dictionary_example.exe 더블클릭
+dictionary.exe 더블클릭
 
 인터넷/Java 설치 필요 없습니다.
 
@@ -86,4 +86,4 @@ A. 배포 태스크를 실행해야 생성됩니다.
 
 참고 (배포 태스크 이름/산출물 경로) 배포 태스크: assemblePortable
 
-배포 폴더 경로: build/dist/project_name/
+배포 폴더 경로: build/dist/dictionary/
