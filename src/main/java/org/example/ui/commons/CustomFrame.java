@@ -1,10 +1,6 @@
 package org.example.ui.commons;
 
 import javax.swing.*;
-import java.awt.*;
-import java.util.function.Consumer;
-
-import javax.swing.*;
 import java.util.function.Consumer;
 
 public class CustomFrame extends JFrame {
@@ -28,9 +24,9 @@ public class CustomFrame extends JFrame {
     }
 
     private void applyStyle() {
-        UiSizePreset preset = style.sizePreset != null ? style.sizePreset : UiSizePreset.MEDIUM;
+        UiSizePreset preset = style.sizePreset != null ? style.sizePreset : UiSizePreset.APP_MEDIUM;
         setDefaultCloseOperation(style.closeOperation != null ? style.closeOperation : DEFAULT_CLOSE_OPERATION);
-        setSize(preset.width(), preset.height());
+        setSize(preset.appWidth(), preset.appHeight());
         setLocationRelativeTo(null);
     }
 
@@ -49,4 +45,3 @@ public class CustomFrame extends JFrame {
         }
     }
 }
-
