@@ -5,6 +5,7 @@ import org.example.data.ViewContainer;
 import org.example.ui.commons.CustomFrame;
 import org.example.ui.commons.CustomLabel;
 import org.example.ui.commons.CustomPanel;
+import org.example.ui.commons.UiSizePreset;
 
 import javax.swing.*;
 import java.awt.*;
@@ -12,6 +13,9 @@ import java.awt.*;
 public class Main {
 
     private static final String APP_TITLE = "용어사전";
+    private static final UiSizePreset APP_SIZE = UiSizePreset.APP_FULL_SIZE;
+
+
     public static void main(String[] args) {
 
         JsonCacheMap.initializeOnce();

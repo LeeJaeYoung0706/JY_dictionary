@@ -16,7 +16,7 @@ public final class ViewContainer {
         JsonCacheMap.initializeOnce();
         return new ViewContainer(new LinkedHashMap<>(JsonCacheMap.snapshot()));
     }
-    // 공지사항
+
     public String notice() {
         Object value = root.get("notice");
         return value == null ? "" : value.toString();
@@ -25,6 +25,15 @@ public final class ViewContainer {
     @SuppressWarnings("unchecked")
     public List<Map<String, String>> entries() {
         Object value = root.get("entries");
+        if (value instanceof List<?>) {
+            return (List<Map<String, String>>) value;
+        }
+        return List.of();
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<Map<String, String>> columns() {
+        Object value = root.get("columns");
         if (value instanceof List<?>) {
             return (List<Map<String, String>>) value;
         }
