@@ -1,19 +1,126 @@
 plugins {
     id 'java'
+    id 'application'
+    id 'com.gradleup.shadow' version '9.0.0-beta13'
+    id 'edu.sc.seis.launch4j' version '3.0.5'
 }
 
-group = 'org.example'
-version = '1.0-SNAPSHOT'
 
-repositories {
-    mavenCentral()
+repositories { mavenCentral() }
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+}
+
+application {
+    mainClass = "org.example.Main"
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation "org.apache.poi:poi-ooxml:5.2.5"
 }
 
-test {
-    useJUnitPlatform()
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+shadowJar {
+    archiveBaseName.set('description')
+    archiveClassifier.set('all') // description-all.jar
+    archiveVersion.set('')       // 버전 문자열 제거
+    mergeServiceFiles()
+}
+
+tasks.jar {
+    archiveFileName = 'app.jar'
+}
+
+// ===== Excel -> JSON (build-time) =====
+def sourceXlsx = file("src/main/resources/source/data.xlsx")
+def generatedRoot = layout.buildDirectory.dir("generated-resources")
+def generatedJson = generatedRoot.map { it.file("data.json") }
+
+tasks.register("generateDataDb", JavaExec) {
+    group = "build"
+    description = "Build-time: Excel -> JSON Data DB"
+
+    dependsOn(tasks.named("compileJava"))
+
+    classpath =
+            files(sourceSets.main.output.classesDirs) +
+                    configurations.runtimeClasspath
+
+    mainClass = "org.example.build.ExcelDataToJsonGenerator"
+    args(sourceXlsx.absolutePath, generatedJson.get().asFile.absolutePath)
+
+    inputs.file(sourceXlsx)
+    outputs.file(generatedJson)
+
+    standardOutput = System.out
+    errorOutput = System.err
+    ignoreExitValue = false
+}
+
+processResources {
+    dependsOn(tasks.named("generateDataDb"))
+    from(generatedJson) {
+        into("") // (개발용 fallback) JAR 루트에 data.json
+    }
+}
+
+// ===== Launch4j (EXE) =====
+launch4j {
+    outfile = "dictionary.exe"
+    mainClassName = application.mainClass.get()
+    headerType = "gui"               // Swing: 콘솔창 숨김
+
+    // shadowJar Task를 그대로 지정 (README 방식)
+    jarTask = project.tasks.shadowJar
+
+    // shadowJar가 fat-jar라 라이브러리 복사 로직 비활성화
+    copyConfigurable = []
+
+    bundledJrePath = "jre"           // 배포 폴더 내 jre/ 사용
+    jreMinVersion = "17"
+
+    // 실행 시 작업폴더를 exe 폴더로 변경 (data/glossary.json 경로 안정화)
+    chdir = '.'
+}
+
+// ===== 배포 폴더 조립 (폴더째 배포) =====
+def distDir = layout.buildDirectory.dir("dist/dictionary")
+
+tasks.register("assemblePortable", Copy) {
+    group = "distribution"
+    description = "배포 파일 만들기"
+
+    dependsOn(tasks.named("createExe"))
+    dependsOn(tasks.named("shadowJar"))
+    dependsOn(tasks.named("generateDataDb"))
+
+    into(distDir)
+
+    // EXE
+    from("$buildDir/launch4j/dictionary.exe")
+
+    // Fat JAR
+    from("$buildDir/libs") {
+        include "description-all.jar"
+    }
+
+    // 운영 데이터: exe 옆 data/data.json
+    from(generatedJson) {
+        into("data")
+        rename { "data.json" }
+    }
+
+    // (선택) config 기본 파일
+    from("src/dist") {
+        include "**/*"
+    }
+
+    // JRE 포함
+    from("$projectDir/jre") {
+        into("jre")
+    }
 }
