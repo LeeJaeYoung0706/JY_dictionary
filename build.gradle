@@ -1,10 +1,11 @@
+import org.gradle.jvm.toolchain.JavaToolchainService
+
 plugins {
     id 'java'
     id 'application'
     id 'com.gradleup.shadow' version '9.0.0-beta13'
     id 'edu.sc.seis.launch4j' version '3.0.5'
 }
-
 
 repositories { mavenCentral() }
 
@@ -18,6 +19,7 @@ application {
 
 dependencies {
     implementation "org.apache.poi:poi-ooxml:5.2.5"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.18.2"
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -35,7 +37,9 @@ tasks.jar {
     archiveFileName = 'app.jar'
 }
 
-// ===== Excel -> JSON (build-time) =====
+// ===========================
+// Excel -> JSON (build-time)
+// ===========================
 def sourceXlsx = file("src/main/resources/source/data.xlsx")
 def generatedRoot = layout.buildDirectory.dir("generated-resources")
 def generatedJson = generatedRoot.map { it.file("data.json") }
@@ -46,10 +50,7 @@ tasks.register("generateDataDb", JavaExec) {
 
     dependsOn(tasks.named("compileJava"))
 
-    classpath =
-            files(sourceSets.main.output.classesDirs) +
-                    configurations.runtimeClasspath
-
+    classpath = files(sourceSets.main.output.classesDirs) + configurations.runtimeClasspath
     mainClass = "org.example.build.ExcelDataToJsonGenerator"
     args(sourceXlsx.absolutePath, generatedJson.get().asFile.absolutePath)
 
@@ -61,39 +62,140 @@ tasks.register("generateDataDb", JavaExec) {
     ignoreExitValue = false
 }
 
-processResources {
-    dependsOn(tasks.named("generateDataDb"))
-    from(generatedJson) {
-        into("") // (개발용 fallback) JAR 루트에 data.json
+// ===========================
+// Resources: classpath:/data.json always exists in local run
+//  - generatedJson -> build/resources/main/data.json
+//  - DO NOT place a manually managed src/main/resources/data.json
+// ===========================
+sourceSets {
+    main {
+        resources {
+            srcDir(generatedRoot)
+        }
     }
 }
 
-// ===== Launch4j (EXE) =====
+processResources {
+    dependsOn(tasks.named("generateDataDb"))
+    // 중복 나면 숨기지 말고 빌드에서 바로 터뜨림
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+}
+
+// ===========================
+// Minimal Runtime (jlink) - environment independent
+//  - output: build/runtime-image (contains bin/javaw.exe)
+// ===========================
+def runtimeImageDir = layout.buildDirectory.dir("runtime-image")
+
+// Swing(JTable) + Jackson 기준 최소 모듈 (필요시 java.management 추가)
+def jlinkModules = "java.base,java.desktop,java.logging,java.xml,java.naming"
+
+tasks.register("createRuntimeImage") {
+    group = "distribution"
+    description = "Create minimal Java runtime image via jlink (toolchain-based)"
+
+    inputs.property("modules", jlinkModules)
+    outputs.dir(runtimeImageDir)
+
+    doLast {
+        def toolchains = project.extensions.getByType(JavaToolchainService)
+        def launcher = toolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(17)
+        }.get()
+
+        def javaHome = launcher.metadata.installationPath.asFile
+        def isWindows = org.gradle.internal.os.OperatingSystem.current().isWindows()
+        def jlinkExe = new File(javaHome, "bin/jlink" + (isWindows ? ".exe" : ""))
+
+        if (!jlinkExe.exists()) {
+            throw new GradleException("jlink not found at: ${jlinkExe.absolutePath} (need JDK 17, not JRE)")
+        }
+
+        def outDir = runtimeImageDir.get().asFile
+        def outPath = outDir.absolutePath
+
+        // ★ jlink는 output dir 존재하면 실패 -> OS 명령으로 강제 삭제(가장 확실)
+        if (outDir.exists()) {
+            if (isWindows) {
+                exec {
+                    commandLine "cmd", "/c", "rmdir", "/s", "/q", outPath
+                    ignoreExitValue = true
+                }
+            } else {
+                exec {
+                    commandLine "rm", "-rf", outPath
+                    ignoreExitValue = true
+                }
+            }
+        }
+
+        // 삭제 확인 (남아있으면 즉시 실패)
+        if (outDir.exists()) {
+            throw new GradleException("Failed to delete runtime image dir (in use?): " + outPath)
+        }
+
+        // 생성
+        exec {
+            commandLine(
+                    jlinkExe.absolutePath,
+                    "--add-modules", jlinkModules,
+                    "--strip-debug",
+                    "--no-header-files",
+                    "--no-man-pages",
+                    "--compress=2",
+                    "--output", outPath
+            )
+        }
+
+        // sanity check
+        if (isWindows) {
+            def javaw = new File(outDir, "bin/javaw.exe")
+            def javaExe = new File(outDir, "bin/java.exe")
+            if (!javaw.exists() && !javaExe.exists()) {
+                throw new GradleException("runtime image created but no bin/java(w).exe found in: " + outPath)
+            }
+        }
+    }
+}
+
+// ===========================
+// Launch4j (EXE)
+//  - uses bundled runtime in dist/jre/
+// ===========================
 launch4j {
     outfile = "dictionary.exe"
     mainClassName = application.mainClass.get()
-    headerType = "gui"               // Swing: 콘솔창 숨김
+    headerType = "gui" // Swing: 콘솔창 숨김
 
-    // shadowJar Task를 그대로 지정 (README 방식)
+    // 운영에서 FS 데이터 강제하고 싶으면 dictionary.strictFs=true 추가
+    jvmOptions = [
+            "-Dfile.encoding=UTF-8",
+            "-Dsun.jnu.encoding=UTF-8",
+            "-Dsun.stdout.encoding=UTF-8",
+            "-Dsun.stderr.encoding=UTF-8"
+            // ,"-Ddictionary.strictFs=true"
+    ]
+
+    // fat-jar를 실행 대상으로
     jarTask = project.tasks.shadowJar
-
-    // shadowJar가 fat-jar라 라이브러리 복사 로직 비활성화
     copyConfigurable = []
 
-    bundledJrePath = "jre"           // 배포 폴더 내 jre/ 사용
+    bundledJrePath = "jre" // 배포 폴더 내 jre/ 사용
     jreMinVersion = "17"
 
-    // 실행 시 작업폴더를 exe 폴더로 변경 (data/glossary.json 경로 안정화)
     chdir = '.'
 }
 
-// ===== 배포 폴더 조립 (폴더째 배포) =====
+// ===========================
+// Portable Distribution
+// ===========================
 def distDir = layout.buildDirectory.dir("dist/dictionary")
 
 tasks.register("assemblePortable", Copy) {
     group = "distribution"
     description = "배포 파일 만들기"
 
+    dependsOn(tasks.named("createRuntimeImage"))
     dependsOn(tasks.named("createExe"))
     dependsOn(tasks.named("shadowJar"))
     dependsOn(tasks.named("generateDataDb"))
@@ -119,8 +221,25 @@ tasks.register("assemblePortable", Copy) {
         include "**/*"
     }
 
-    // JRE 포함
-    from("$projectDir/jre") {
+    // JRE(= jlink runtime image) 포함 - bin/javaw.exe 있어야 Launch4j가 잡음
+    from(runtimeImageDir) {
         into("jre")
     }
+}
+
+// ===========================
+// Local console encoding for JavaExec (gradlew run 등)
+// ===========================
+tasks.withType(JavaExec).configureEach {
+    jvmArgs(
+            "-Dfile.encoding=UTF-8",
+            "-Dsun.jnu.encoding=UTF-8",
+            "-Dsun.stdout.encoding=UTF-8",
+            "-Dsun.stderr.encoding=UTF-8"
+    )
+}
+
+// 로컬 run 시에도 최신 리소스 보장(원하면 사용)
+tasks.named("run") {
+    dependsOn(tasks.named("processResources"))
 }
