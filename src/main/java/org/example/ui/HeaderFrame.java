@@ -82,21 +82,26 @@ public class HeaderFrame {
 
     private JComponent createFilterComponent(SearchField field) {
         CustomPanel wrapper = CustomPanel.flexColumn(4).style(s -> s.padding(0));
+        wrapper.setBackground(Color.WHITE);
         int span = field.slotSpan();
         int width = ROW_SIZE * span + (ROW_GAP * (span - 1));
+        int searchComponentWidth = (int) Math.floor(width * 0.95);
         wrapper.setPreferredSize(new Dimension(width, FILTER_HEIGHT));
         wrapper.add(CustomLabel.of(field.label));
 
         if (field.freeText) {
-            wrapper.add(CustomTextField.of().style(s -> s.columns(span == 2 ? 42 : 18)));
+            CustomTextField meaningField = CustomTextField.of().style(s -> s.columns(span == 2 ? 42 : 18));
+            meaningField.setPreferredSize(new Dimension(searchComponentWidth, 28));
+            wrapper.add(meaningField);
         } else {
             List<String> options = new ArrayList<>();
             options.add("전체");
             options.addAll(field.options);
-            wrapper.add(CustomSelectBox.of(options).style(s -> s.size(span == 2 ? 510 : 250, 28)));
+            wrapper.add(CustomSelectBox.of(options).style(s -> s.size(searchComponentWidth, 28)));
         }
         return wrapper;
     }
+
 
     private List<SearchField> buildSearchFields() {
         List<Map<String, String>> columns = container.columns();
