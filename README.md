@@ -1,5 +1,59 @@
 스윙으로 만드는 사전 배포 대상 PC는 인터넷 없음 / Java 설치 없음 / Windows 환경을 기준 프로젝트 구조 요약 입력(원본 엑셀) src/main/resources/source/data.xlsx
 
+### 설명
+
+용어 사전으로 사용하는 애플리케이션
+
+<img width="1820" height="788" alt="image" src="https://github.com/user-attachments/assets/46341b92-4ad0-44f0-abf1-86528482400c" />
+
+셀렉트박스 자동완성 기능 처리 
+<img width="1386" height="184" alt="image" src="https://github.com/user-attachments/assets/545de3a4-c5f1-4819-9a64-254af0b99408" />
+
+검색 히스토리 버튼 클릭하여 이력 확인 가능
+
+<img width="1158" height="502" alt="image" src="https://github.com/user-attachments/assets/6ec66086-87f8-4e8d-8abf-ed84a930c683" />
+
+선택 후 다시검색 클릭
+
+<img width="1155" height="507" alt="image" src="https://github.com/user-attachments/assets/e7da70f3-9394-413c-abc2-8bda52a74fc3" />
+
+해당 이력으로 재검색 실행
+
+<img width="1821" height="783" alt="image" src="https://github.com/user-attachments/assets/1c318d28-9896-4b97-b94f-919a24eebffb" />
+
+더블클릭 시 상세보기 제공
+
+<img width="1815" height="781" alt="image" src="https://github.com/user-attachments/assets/0a663904-177b-4cac-8524-d07d85e437aa" />
+
+<img width="889" height="634" alt="image" src="https://github.com/user-attachments/assets/2e2e7862-398f-4add-8e41-ee34c838bc9b" />
+
+상세보기 이력 제공
+
+<img width="1160" height="508" alt="image" src="https://github.com/user-attachments/assets/bdf2aba6-6ac2-4184-8d2e-23875b133326" />
+
+더블 클릭시 이력 확인 가능
+
+<img width="884" height="633" alt="image" src="https://github.com/user-attachments/assets/1dac766c-669a-4364-9cd9-d75ebaf6036b" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 빌드
+
 빌드 시 생성되는 JSON
 
 build/generated-resources/data.json
