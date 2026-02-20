@@ -38,13 +38,15 @@ public class HeaderFrame {
     private final UiSizePreset sizePreset;
     private final Consumer<Map<String, String>> onSearch;
     private final SearchHistoryStore historyStore = new SearchHistoryStore();
+    private final Consumer<Component> onOpenDetailHistory;
     private final List<SearchInputBinding> searchInputBindings = new ArrayList<>();
     private final int rowSize;
 
-    public HeaderFrame(ViewContainer container, UiSizePreset sizePreset, Consumer<Map<String, String>> onSearch) {
+    public HeaderFrame(ViewContainer container, UiSizePreset sizePreset, Consumer<Map<String, String>> onSearch, Consumer<Component> onOpenDetailHistory) {
         this.container = container;
         this.sizePreset = sizePreset;
         this.onSearch = onSearch;
+        this.onOpenDetailHistory = onOpenDetailHistory;
 
         int horizontalInsets = (HEADER_PADDING_X * 2) + (HEADER_BORDER_WIDTH * 2);
         int availableWidth = sizePreset.appWidth() - horizontalInsets;
@@ -119,8 +121,24 @@ public class HeaderFrame {
         historyButton.setRequestFocusEnabled(false);
         historyButton.addActionListener(e -> openHistoryDialog(header));
 
+        CustomButton detailHistoryButton = CustomButton.of("상세보기 이력")
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH + 40, COMPONENT_HEIGHT)
+                        .font(new Font("Malgun Gothic", Font.BOLD, 17))
+                        .background(new Color(189, 189, 189))
+                        .foreground(Color.BLACK));
+        detailHistoryButton.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        detailHistoryButton.setFocusable(false);
+        detailHistoryButton.setRequestFocusEnabled(false);
+        detailHistoryButton.addActionListener(e -> {
+            if (onOpenDetailHistory != null) {
+                onOpenDetailHistory.accept(header);
+            }
+        });
+
+
         actionRow.add(searchButton);
         actionRow.add(historyButton);
+        actionRow.add(detailHistoryButton);
         header.add(actionRow);
 
         int requiredHeaderHeight = header.getPreferredSize().height;

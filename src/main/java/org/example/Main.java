@@ -230,7 +230,7 @@ public class Main {
             CustomPanel body = bodyFrame.build();
             root.add(body, BorderLayout.CENTER);
 
-            CustomPanel header = new HeaderFrame(container, APP_SIZE, bodyFrame::applySearchConditions).build();
+            CustomPanel header = new HeaderFrame(container, APP_SIZE, bodyFrame::applySearchConditions, bodyFrame::openDetailHistory).build();
             root.add(header, BorderLayout.NORTH);
 
             CustomFrame frame = CustomFrame.of(APP_TITLE)

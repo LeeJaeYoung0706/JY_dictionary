@@ -1,5 +1,6 @@
 package org.example.ui;
 
+import org.example.data.DetailViewHistoryStore;
 import org.example.data.ViewContainer;
 import org.example.ui.commons.CustomFrame;
 import org.example.ui.commons.CustomPanel;
@@ -11,6 +12,7 @@ import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,6 +29,7 @@ public class BodyFrame {
 
     private JTable table;
     private TableRowSorter<TableModel> tableSorter;
+    private final DetailViewHistoryStore detailViewHistoryStore = new DetailViewHistoryStore();
 
     public BodyFrame(ViewContainer container, UiSizePreset sizePreset) {
         this.container = container;
@@ -54,6 +57,28 @@ public class BodyFrame {
 
         body.add(scrollPane, BorderLayout.CENTER);
         return body;
+    }
+
+    public void openDetailHistory(Component parent) {
+        try {
+            new DetailHistoryFrame(detailViewHistoryStore.loadAll()).open(parent);
+        } catch (RuntimeException ex) {
+            org.example.ui.commons.CustomMessageBox.showError(parent, ex.getMessage(), "오류");
+        }
+    }
+
+    private void saveDetailViewHistory(TableModel model, int modelRow) {
+        try {
+            Map<String, String> details = new LinkedHashMap<>();
+            for (int col = 0; col < model.getColumnCount(); col++) {
+                String key = String.valueOf(model.getColumnName(col));
+                Object rawValue = model.getValueAt(modelRow, col);
+                details.put(key, rawValue == null ? "" : String.valueOf(rawValue));
+            }
+            detailViewHistoryStore.append(details);
+        } catch (RuntimeException ignore) {
+            // 상세보기 이력 저장 실패는 조회 흐름을 막지 않음
+        }
     }
 
     public void applySearchConditions(Map<String, String> conditionsByKey) {
@@ -173,6 +198,7 @@ public class BodyFrame {
                 }
 
                 int modelRow = dataTable.convertRowIndexToModel(viewRow);
+                saveDetailViewHistory(model, modelRow);
                 new DetailFrame(model, modelRow).open();
             }
         });
