@@ -9,6 +9,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -60,17 +63,24 @@ public class BodyFrame {
             return;
         }
 
-        Map<Integer, String> activeConditions = new HashMap<>();
+        Map<String, SearchConditionGroup> activeConditionGroups = new HashMap<>();
         for (Map.Entry<String, String> condition : conditionsByKey.entrySet()) {
-            Integer columnIndex = keyToColumnIndex.get(condition.getKey());
+            String key = condition.getKey();
+            Integer columnIndex = keyToColumnIndex.get(key);
             String value = condition.getValue();
             if (columnIndex == null || value == null || value.isBlank()) {
                 continue;
             }
-            activeConditions.put(columnIndex, value.trim().toLowerCase(Locale.ROOT));
+
+            String normalizedBaseKey = normalizeBaseKey(key);
+            SearchConditionGroup conditionGroup = activeConditionGroups.computeIfAbsent(
+                    normalizedBaseKey,
+                    k -> new SearchConditionGroup(value.trim().toLowerCase(Locale.ROOT))
+            );
+            conditionGroup.columnIndexes.add(columnIndex);
         }
 
-        if (activeConditions.isEmpty()) {
+        if (activeConditionGroups.isEmpty()) {
             tableSorter.setRowFilter(null);
             return;
         }
@@ -78,16 +88,41 @@ public class BodyFrame {
         tableSorter.setRowFilter(new RowFilter<>() {
             @Override
             public boolean include(Entry<? extends TableModel, ? extends Integer> entry) {
-                for (Map.Entry<Integer, String> condition : activeConditions.entrySet()) {
-                    Object rawValue = entry.getValue(condition.getKey());
-                    String rowValue = rawValue == null ? "" : String.valueOf(rawValue).toLowerCase(Locale.ROOT);
-                    if (!rowValue.contains(condition.getValue())) {
+                for (SearchConditionGroup group : activeConditionGroups.values()) {
+                    boolean groupMatched = false;
+                    for (Integer columnIndex : group.columnIndexes) {
+                        Object rawValue = entry.getValue(columnIndex);
+                        String rowValue = rawValue == null ? "" : String.valueOf(rawValue).toLowerCase(Locale.ROOT);
+                        if (rowValue.contains(group.query)) {
+                            groupMatched = true;
+                            break;
+                        }
+                    }
+
+                    if (!groupMatched) {
                         return false;
                     }
                 }
                 return true;
             }
         });
+    }
+
+    private String normalizeBaseKey(String key) {
+        String lower = key.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("korean") && key.length() > 6) {
+            return key.substring(6);
+        }
+        return key;
+    }
+
+    private static final class SearchConditionGroup {
+        final String query;
+        final List<Integer> columnIndexes = new ArrayList<>();
+
+        SearchConditionGroup(String query) {
+            this.query = query;
+        }
     }
 
     private JTable createDataTable() {
@@ -124,7 +159,25 @@ public class BodyFrame {
         dataTable.setRowHeight(26);
         dataTable.getTableHeader().setFont(new Font("Malgun Gothic", Font.BOLD, 13));
         dataTable.setAutoCreateRowSorter(false);
+        dataTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() != 2 || !SwingUtilities.isLeftMouseButton(e)) {
+                    return;
+                }
+
+                int viewRow = dataTable.rowAtPoint(e.getPoint());
+                if (viewRow < 0) {
+                    return;
+                }
+
+                int modelRow = dataTable.convertRowIndexToModel(viewRow);
+                new DetailFrame(model, modelRow).open();
+            }
+        });
 
         return dataTable;
     }
+
+
 }

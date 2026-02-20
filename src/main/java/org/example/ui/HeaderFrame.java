@@ -245,39 +245,30 @@ public class HeaderFrame {
             return;
         }
 
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(parent), "검색 히스토리", Dialog.ModalityType.MODELESS);
-        dialog.setSize(560, 420);
-        dialog.setLocationRelativeTo(parent);
-
-        JTextArea historyText = new JTextArea();
-        historyText.setEditable(false);
-        historyText.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
-        historyText.setText(formatHistory(items));
-
-        dialog.setContentPane(new JScrollPane(historyText));
-        dialog.setVisible(true);
+        List<SearchField> searchFields = buildSearchFields();
+        List<String> historyColumns = searchFields.stream().map(field -> field.label).collect(Collectors.toList());
+        new HistoryFrame(items, historyColumns, selectedConditions -> applyHistorySearch(selectedConditions, searchFields)).open(parent);
     }
 
-    private String formatHistory(List<SearchHistoryStore.SearchHistoryEntry> items) {
-        if (items.isEmpty()) {
-            return "저장된 검색 히스토리가 없습니다.";
+
+
+    private void applyHistorySearch(Map<String, String> selectedConditions, List<SearchField> searchFields) {
+        if (onSearch == null || selectedConditions == null || selectedConditions.isEmpty()) {
+            return;
         }
 
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < items.size(); i++) {
-            SearchHistoryStore.SearchHistoryEntry entry = items.get(i);
-            sb.append(i + 1).append(". ").append(entry.searchedAt).append('\n');
-
-            if (entry.conditions == null || entry.conditions.isEmpty()) {
-                sb.append("   - 조건 없음").append('\n');
-            } else {
-                for (Map.Entry<String, String> condition : entry.conditions.entrySet()) {
-                    sb.append("   - ").append(condition.getKey()).append(": ").append(condition.getValue()).append('\n');
-                }
+        Map<String, String> keyConditions = new LinkedHashMap<>();
+        for (SearchField field : searchFields) {
+            String selectedValue = selectedConditions.get(field.label);
+            if (selectedValue == null || selectedValue.isBlank()) {
+                continue;
             }
-            sb.append('\n');
+            for (String key : field.keys) {
+                keyConditions.put(key, selectedValue.trim());
+            }
         }
-        return sb.toString();
+
+        onSearch.accept(keyConditions);
     }
 
     private String normalizeBaseKey(String key) {
