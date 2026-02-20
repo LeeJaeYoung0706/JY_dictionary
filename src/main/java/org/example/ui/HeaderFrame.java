@@ -14,30 +14,36 @@ public class HeaderFrame {
     // 행에 포함되는 컬럼 ( 아이템 ) 갯수
     private static final int ROW_ITEM_COUNT = 4;
     // 아이템 간 간격
-    private static final int ROW_GAP = 10;
-    // 아이템 패널 사이즈
-    private static final int ROW_SIZE = 380;
+    private static final int ROW_GAP = 20;
+    // 헤더 좌우 패딩 (build()와 동일 값 유지)
+    private static final int HEADER_PADDING_X = 16;
+    private static final int HEADER_BORDER_WIDTH = 5;
     // 아이템 패널 높이
     private static final int FILTER_HEIGHT = 56;
     // 버튼 크기
     private static final int SEARCH_BUTTON_WIDTH = 100;
     private static final int COMPONENT_HEIGHT = 28;
 
-
     private final ViewContainer container;
     private final UiSizePreset sizePreset;
+    // 앱 전체 폭 기준으로 계산된 아이템 패널 폭
+    private final int rowSize;
 
     public HeaderFrame(ViewContainer container, UiSizePreset sizePreset) {
         this.container = container;
         this.sizePreset = sizePreset;
+
+        int horizontalInsets = (HEADER_PADDING_X * 2) + (HEADER_BORDER_WIDTH * 2);
+        int availableWidth = sizePreset.appWidth() - horizontalInsets;
+        int totalGap = ROW_GAP * (ROW_ITEM_COUNT - 1);
+        this.rowSize = Math.max(1, (int) Math.floor((availableWidth - totalGap) / (double) ROW_ITEM_COUNT));
     }
 
     public CustomPanel build() {
         CustomPanel header = CustomPanel.flexColumn(10)
-                .style(s -> s.padding(14, 16, 14, 16).border(true).borderColor(new Color(224, 224, 224)));
+                .style(s -> s.padding(14, HEADER_PADDING_X, 14, HEADER_PADDING_X).border(true).borderColor(new Color(224, 224, 224)));
         header.setBackground(Color.WHITE);
         header.setPreferredSize(new Dimension(sizePreset.appWidth(), sizePreset.headerHeight()));
-
 
         CustomPanel row1 = createHeaderRow(12);
         row1.add(CustomLabel.of(APP_TITLE).style(s -> s.font(new Font("Malgun Gothic", Font.BOLD, 20))));
@@ -46,7 +52,6 @@ public class HeaderFrame {
 
         List<SearchField> fields = buildSearchFields();
         CustomPanel row = createHeaderRow(ROW_GAP);
-
         int remainSlots = ROW_ITEM_COUNT;
 
         for (SearchField field : fields) {
@@ -78,8 +83,13 @@ public class HeaderFrame {
         actionRow.add(searchButton);
         header.add(actionRow);
 
+        int requiredHeaderHeight = header.getPreferredSize().height;
+        int finalHeaderHeight = Math.max(sizePreset.headerHeight(), requiredHeaderHeight);
+        header.setPreferredSize(new Dimension(sizePreset.appWidth(), finalHeaderHeight));
+
         return header;
     }
+
 
     private CustomPanel createHeaderRow(int gap) {
         CustomPanel row = CustomPanel.flexRow(gap).style(s -> s.padding(0));
@@ -91,7 +101,7 @@ public class HeaderFrame {
         CustomPanel wrapper = CustomPanel.flexColumn(4).style(s -> s.padding(0));
         wrapper.setBackground(Color.WHITE);
         int span = field.slotSpan();
-        int width = ROW_SIZE * span + (ROW_GAP * (span - 1));
+        int width = rowSize * span + (ROW_GAP * (span - 1));
 
         wrapper.setPreferredSize(new Dimension(width, FILTER_HEIGHT));
         wrapper.add(CustomLabel.of(field.label));
