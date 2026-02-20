@@ -21,7 +21,7 @@ public class HeaderFrame {
     private static final int FILTER_HEIGHT = 56;
     // 버튼 크기
     private static final int SEARCH_BUTTON_WIDTH = 100;
-    private static final int SEARCH_BUTTON_HEIGHT = 28;
+    private static final int COMPONENT_HEIGHT = 28;
 
 
     private final ViewContainer container;
@@ -38,13 +38,14 @@ public class HeaderFrame {
         header.setBackground(Color.WHITE);
         header.setPreferredSize(new Dimension(sizePreset.appWidth(), sizePreset.headerHeight()));
 
-        CustomPanel row1 = CustomPanel.flexRow(12).style(s -> s.padding(0));
+
+        CustomPanel row1 = createHeaderRow(12);
         row1.add(CustomLabel.of(APP_TITLE).style(s -> s.font(new Font("Malgun Gothic", Font.BOLD, 20))));
         row1.add(CustomLabel.of("공지: " + container.notice()).style(s -> s.font(new Font("Malgun Gothic", Font.PLAIN, 13))));
         header.add(row1);
 
         List<SearchField> fields = buildSearchFields();
-        CustomPanel row = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+        CustomPanel row = createHeaderRow(ROW_GAP);
 
         int remainSlots = ROW_ITEM_COUNT;
 
@@ -53,7 +54,7 @@ public class HeaderFrame {
 
             if (span > remainSlots) {
                 header.add(row);
-                row = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+                row = createHeaderRow(ROW_GAP);
                 remainSlots = ROW_ITEM_COUNT;
             }
 
@@ -62,7 +63,7 @@ public class HeaderFrame {
 
             if (remainSlots == 0) {
                 header.add(row);
-                row = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+                row = createHeaderRow(ROW_GAP);
                 remainSlots = ROW_ITEM_COUNT;
             }
         }
@@ -71,13 +72,19 @@ public class HeaderFrame {
             header.add(row);
         }
 
-        CustomPanel actionRow = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+        CustomPanel actionRow = createHeaderRow(ROW_GAP);
         CustomButton searchButton = CustomButton.of("검색")
-                .style(s -> s.size(SEARCH_BUTTON_WIDTH, SEARCH_BUTTON_HEIGHT));
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT));
         actionRow.add(searchButton);
         header.add(actionRow);
 
         return header;
+    }
+
+    private CustomPanel createHeaderRow(int gap) {
+        CustomPanel row = CustomPanel.flexRow(gap).style(s -> s.padding(0));
+        row.setBackground(Color.WHITE);
+        return row;
     }
 
     private JComponent createFilterComponent(SearchField field) {
@@ -85,19 +92,17 @@ public class HeaderFrame {
         wrapper.setBackground(Color.WHITE);
         int span = field.slotSpan();
         int width = ROW_SIZE * span + (ROW_GAP * (span - 1));
-        int searchComponentWidth = (int) Math.floor(width * 0.95);
+
         wrapper.setPreferredSize(new Dimension(width, FILTER_HEIGHT));
         wrapper.add(CustomLabel.of(field.label));
 
         if (field.freeText) {
-            CustomTextField meaningField = CustomTextField.of().style(s -> s.columns(span == 2 ? 42 : 18));
-            meaningField.setPreferredSize(new Dimension(searchComponentWidth, 28));
-            wrapper.add(meaningField);
+            wrapper.add(CustomTextField.of().style(s -> s.columns(0).size(width, COMPONENT_HEIGHT)));
         } else {
             List<String> options = new ArrayList<>();
             options.add("전체");
             options.addAll(field.options);
-            wrapper.add(CustomSelectBox.of(options).style(s -> s.size(searchComponentWidth, 28)));
+            wrapper.add(CustomSelectBox.of(options).style(s -> s.size(width, COMPONENT_HEIGHT)));
         }
         return wrapper;
     }
