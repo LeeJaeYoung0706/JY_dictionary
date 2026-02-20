@@ -246,7 +246,29 @@ public class HeaderFrame {
             return;
         }
 
-        new HistoryFrame(items).open(parent);
+        List<SearchField> searchFields = buildSearchFields();
+        List<String> historyColumns = searchFields.stream().map(field -> field.label).collect(Collectors.toList());
+        new HistoryFrame(items, historyColumns, selectedConditions -> applyHistorySearch(selectedConditions, searchFields)).open(parent);
+    }
+
+
+    private void applyHistorySearch(Map<String, String> selectedConditions, List<SearchField> searchFields) {
+        if (onSearch == null || selectedConditions == null || selectedConditions.isEmpty()) {
+            return;
+        }
+
+        Map<String, String> keyConditions = new LinkedHashMap<>();
+        for (SearchField field : searchFields) {
+            String selectedValue = selectedConditions.get(field.label);
+            if (selectedValue == null || selectedValue.isBlank()) {
+                continue;
+            }
+            for (String key : field.keys) {
+                keyConditions.put(key, selectedValue.trim());
+            }
+        }
+
+        onSearch.accept(keyConditions);
     }
 
     private String normalizeBaseKey(String key) {
