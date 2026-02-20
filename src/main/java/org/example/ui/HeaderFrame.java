@@ -1,13 +1,26 @@
 package org.example.ui;
 
+import org.example.data.SearchHistoryStore;
 import org.example.data.ViewContainer;
-import org.example.ui.commons.*;
+import org.example.ui.commons.CustomButton;
+import org.example.ui.commons.CustomLabel;
+import org.example.ui.commons.CustomPanel;
+import org.example.ui.commons.CustomSelectBox;
+import org.example.ui.commons.CustomTextField;
+import org.example.ui.commons.UiSizePreset;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.*;
+import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 public class HeaderFrame {
     private static final String APP_TITLE = "용어사전";
@@ -26,6 +39,8 @@ public class HeaderFrame {
 
     private final ViewContainer container;
     private final UiSizePreset sizePreset;
+    private final SearchHistoryStore historyStore = new SearchHistoryStore();
+    private final List<SearchInputBinding> searchInputBindings = new ArrayList<>();
     // 앱 전체 폭 기준으로 계산된 아이템 패널 폭
     private final int rowSize;
 
@@ -44,6 +59,7 @@ public class HeaderFrame {
                 .style(s -> s.padding(14, HEADER_PADDING_X, 14, HEADER_PADDING_X).border(true).borderColor(new Color(224, 224, 224)));
         header.setBackground(Color.WHITE);
         header.setPreferredSize(new Dimension(sizePreset.appWidth(), sizePreset.headerHeight()));
+        searchInputBindings.clear();
 
         CustomPanel row1 = createHeaderRow(12);
         row1.add(CustomLabel.of(APP_TITLE).style(s -> s.font(new Font("Malgun Gothic", Font.BOLD, 20))));
@@ -80,7 +96,14 @@ public class HeaderFrame {
         CustomPanel actionRow = createHeaderRow(ROW_GAP);
         CustomButton searchButton = CustomButton.of("검색")
                 .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT));
+        searchButton.addActionListener(e -> saveCurrentSearchHistory(header));
+
+        CustomButton historyButton = CustomButton.of("히스토리")
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT));
+        historyButton.addActionListener(e -> openHistoryDialog(header));
+
         actionRow.add(searchButton);
+        actionRow.add(historyButton);
         header.add(actionRow);
 
         int requiredHeaderHeight = header.getPreferredSize().height;
@@ -102,21 +125,27 @@ public class HeaderFrame {
         wrapper.setBackground(Color.WHITE);
         int span = field.slotSpan();
         int width = rowSize * span + (ROW_GAP * (span - 1));
-
+        int selectBoxWidth = (int) Math.floor(width * 0.95);
         wrapper.setPreferredSize(new Dimension(width, FILTER_HEIGHT));
         wrapper.add(CustomLabel.of(field.label));
 
         if (field.freeText) {
-            wrapper.add(CustomTextField.of().style(s -> s.columns(0).size(width, COMPONENT_HEIGHT)));
+            CustomTextField meaningField = CustomTextField.of().style(s -> s.columns(0).size(selectBoxWidth, COMPONENT_HEIGHT));
+            searchInputBindings.add(new SearchInputBinding(field, meaningField::getText));
+            wrapper.add(meaningField);
         } else {
             List<String> options = new ArrayList<>();
             options.add("전체");
             options.addAll(field.options);
-            wrapper.add(CustomSelectBox.of(options).style(s -> s.size(width, COMPONENT_HEIGHT)));
+            CustomSelectBox selectBox = CustomSelectBox.of(options).style(s -> s.size(selectBoxWidth, COMPONENT_HEIGHT));
+            searchInputBindings.add(new SearchInputBinding(field, () -> {
+                Object selected = selectBox.getSelectedItem();
+                return selected == null ? "" : String.valueOf(selected);
+            }));
+            wrapper.add(selectBox);
         }
         return wrapper;
     }
-
 
     private List<SearchField> buildSearchFields() {
         List<Map<String, String>> columns = container.columns();
@@ -162,12 +191,82 @@ public class HeaderFrame {
                 .collect(Collectors.toList());
     }
 
+    private void saveCurrentSearchHistory(Component parent) {
+        try {
+            Map<String, String> conditions = new LinkedHashMap<>();
+            for (SearchInputBinding binding : searchInputBindings) {
+                String value = binding.valueSupplier.get();
+                if (value == null || value.isBlank() || "전체".equals(value)) {
+                    continue;
+                }
+                conditions.put(binding.field.label, value.trim());
+            }
+            historyStore.append(conditions);
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(parent, ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void openHistoryDialog(Component parent) {
+        List<SearchHistoryStore.SearchHistoryEntry> items;
+        try {
+            items = historyStore.loadAll();
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(parent, ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(parent), "검색 히스토리", Dialog.ModalityType.MODELESS);
+        dialog.setSize(560, 420);
+        dialog.setLocationRelativeTo(parent);
+
+        JTextArea historyText = new JTextArea();
+        historyText.setEditable(false);
+        historyText.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+        historyText.setText(formatHistory(items));
+
+        dialog.setContentPane(new JScrollPane(historyText));
+        dialog.setVisible(true);
+    }
+
+    private String formatHistory(List<SearchHistoryStore.SearchHistoryEntry> items) {
+        if (items.isEmpty()) {
+            return "저장된 검색 히스토리가 없습니다.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < items.size(); i++) {
+            SearchHistoryStore.SearchHistoryEntry entry = items.get(i);
+            sb.append(i + 1).append(". ").append(entry.searchedAt).append('\n');
+
+            if (entry.conditions == null || entry.conditions.isEmpty()) {
+                sb.append("   - 조건 없음").append('\n');
+            } else {
+                for (Map.Entry<String, String> condition : entry.conditions.entrySet()) {
+                    sb.append("   - ").append(condition.getKey()).append(": ").append(condition.getValue()).append('\n');
+                }
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
+    }
+
     private String normalizeBaseKey(String key) {
         String lower = key.toLowerCase(Locale.ROOT);
         if (lower.startsWith("korean")) {
             return key.substring(6);
         }
         return key;
+    }
+
+    private static final class SearchInputBinding {
+        final SearchField field;
+        final Supplier<String> valueSupplier;
+
+        SearchInputBinding(SearchField field, Supplier<String> valueSupplier) {
+            this.field = field;
+            this.valueSupplier = valueSupplier;
+        }
     }
 
     private static final class SearchField {
