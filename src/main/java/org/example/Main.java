@@ -229,7 +229,8 @@ public class Main {
             CustomPanel header = new HeaderFrame(container, APP_SIZE).build();
             root.add(header, BorderLayout.NORTH);
 
-            CustomPanel body = new BodyFrame(container).build();
+            CustomPanel body = new BodyFrame(container, APP_SIZE).build();
+
 
             root.add(body, BorderLayout.CENTER);
 

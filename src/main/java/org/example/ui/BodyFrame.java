@@ -2,6 +2,7 @@ package org.example.ui;
 
 import org.example.data.ViewContainer;
 import org.example.ui.commons.CustomPanel;
+import org.example.ui.commons.UiSizePreset;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,15 +10,19 @@ import java.util.List;
 import java.util.Map;
 
 public class BodyFrame {
-    private final ViewContainer container;
+    private static final int BODY_PADDING = 16;
 
-    public BodyFrame(ViewContainer container) {
+    private final ViewContainer container;
+    private final UiSizePreset sizePreset;
+
+    public BodyFrame(ViewContainer container, UiSizePreset sizePreset) {
         this.container = container;
+        this.sizePreset = sizePreset;
     }
 
     public CustomPanel build() {
-        CustomPanel body = CustomPanel.flexColumn(8)
-                .style(s -> s.padding(16));
+        CustomPanel body = CustomPanel.of(new BorderLayout())
+                .style(s -> s.padding(BODY_PADDING));
         body.setBackground(Color.WHITE);
 
         JTable table = createDataTable();
@@ -25,7 +30,13 @@ public class BodyFrame {
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)));
         scrollPane.getViewport().setBackground(Color.WHITE);
 
-        body.add(scrollPane);
+        int tableAreaWidth = Math.max(1, sizePreset.appWidth() - (BODY_PADDING * 2));
+        int tableAreaHeight = Math.max(1, sizePreset.appHeight() - sizePreset.headerHeight() - (BODY_PADDING * 2));
+        Dimension tableAreaSize = new Dimension(tableAreaWidth, tableAreaHeight);
+        scrollPane.setPreferredSize(tableAreaSize);
+        scrollPane.setMinimumSize(tableAreaSize);
+
+        body.add(scrollPane, BorderLayout.CENTER);
         return body;
     }
 
