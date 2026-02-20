@@ -3,7 +3,7 @@ package org.example.ui.commons;
 public enum UiSizePreset {
     APP_SMALL(900, 640, 0.20),
     APP_MEDIUM(1100, 760, 0.20),
-    APP_FULL_SIZE(1600, 960, 0.25);
+    APP_FULL_SIZE(1400, 800, 0.28);
 
     private static final int MIN_HEADER_HEIGHT = 120;
 
