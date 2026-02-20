@@ -80,10 +80,26 @@ jre\lib\jvm.cfg
 
 Q2. dist 폴더가 안 생겨요
 
-A. 배포 태스크를 실행해야 생성됩니다.
+
+
+
+
+배포하는법 프로젝트 를 받고.
+배포 태스크를 실행해서 생성
 
 .\gradlew assemblePortable
 
 참고 (배포 태스크 이름/산출물 경로) 배포 태스크: assemblePortable
 
 배포 폴더 경로: build/dist/dictionary/
+
+
+
+
+
+
+
+
+
+
+
