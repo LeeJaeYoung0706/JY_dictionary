@@ -9,6 +9,7 @@ import org.example.ui.commons.CustomTextField;
 import org.example.ui.commons.UiSizePreset;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -105,8 +106,8 @@ public class HeaderFrame {
             saveCurrentSearchHistory(header, labelConditions);
         });
 
-        CustomButton historyButton = CustomButton.of("히스토리")
-                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT)
+        CustomButton historyButton = CustomButton.of("검색 히스토리")
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH + 20, COMPONENT_HEIGHT)
                         .font(new Font("Malgun Gothic", Font.BOLD, 17))
                         .background(new Color(189, 189, 189))
                         .foreground(Color.BLACK));
@@ -245,39 +246,7 @@ public class HeaderFrame {
             return;
         }
 
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(parent), "검색 히스토리", Dialog.ModalityType.MODELESS);
-        dialog.setSize(560, 420);
-        dialog.setLocationRelativeTo(parent);
-
-        JTextArea historyText = new JTextArea();
-        historyText.setEditable(false);
-        historyText.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
-        historyText.setText(formatHistory(items));
-
-        dialog.setContentPane(new JScrollPane(historyText));
-        dialog.setVisible(true);
-    }
-
-    private String formatHistory(List<SearchHistoryStore.SearchHistoryEntry> items) {
-        if (items.isEmpty()) {
-            return "저장된 검색 히스토리가 없습니다.";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < items.size(); i++) {
-            SearchHistoryStore.SearchHistoryEntry entry = items.get(i);
-            sb.append(i + 1).append(". ").append(entry.searchedAt).append('\n');
-
-            if (entry.conditions == null || entry.conditions.isEmpty()) {
-                sb.append("   - 조건 없음").append('\n');
-            } else {
-                for (Map.Entry<String, String> condition : entry.conditions.entrySet()) {
-                    sb.append("   - ").append(condition.getKey()).append(": ").append(condition.getValue()).append('\n');
-                }
-            }
-            sb.append('\n');
-        }
-        return sb.toString();
+        new HistoryFrame(items).open(parent);
     }
 
     private String normalizeBaseKey(String key) {
