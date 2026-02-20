@@ -102,8 +102,8 @@ public class HeaderFrame {
         searchButton.setBorder(BorderFactory.createLineBorder(Color.BLACK));
         searchButton.addActionListener(e -> saveCurrentSearchHistory(header));
 
-        CustomButton historyButton = CustomButton.of("히스토리")
-                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT)
+        CustomButton historyButton = CustomButton.of("검색히스토리")
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH + 20, COMPONENT_HEIGHT)
                         .font(new Font("Malgun Gothic", Font.BOLD, 17))
                         .background(new Color(189, 189, 189))
                         .foreground(Color.BLACK));
