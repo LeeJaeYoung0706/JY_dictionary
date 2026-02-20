@@ -1,21 +1,12 @@
 package org.example.ui;
 
 import org.example.data.ViewContainer;
-import org.example.ui.commons.CustomLabel;
-import org.example.ui.commons.CustomPanel;
-import org.example.ui.commons.CustomSelectBox;
-import org.example.ui.commons.CustomTextField;
-import org.example.ui.commons.UiSizePreset;
+import org.example.ui.commons.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class HeaderFrame {
@@ -28,6 +19,10 @@ public class HeaderFrame {
     private static final int ROW_SIZE = 380;
     // 아이템 패널 높이
     private static final int FILTER_HEIGHT = 56;
+    // 버튼 크기
+    private static final int SEARCH_BUTTON_WIDTH = 100;
+    private static final int SEARCH_BUTTON_HEIGHT = 28;
+
 
     private final ViewContainer container;
     private final UiSizePreset sizePreset;
@@ -50,6 +45,7 @@ public class HeaderFrame {
 
         List<SearchField> fields = buildSearchFields();
         CustomPanel row = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+
         int remainSlots = ROW_ITEM_COUNT;
 
         for (SearchField field : fields) {
@@ -74,6 +70,12 @@ public class HeaderFrame {
         if (row.getComponentCount() > 0) {
             header.add(row);
         }
+
+        CustomPanel actionRow = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+        CustomButton searchButton = CustomButton.of("검색")
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH, SEARCH_BUTTON_HEIGHT));
+        actionRow.add(searchButton);
+        header.add(actionRow);
 
         return header;
     }
@@ -135,7 +137,9 @@ public class HeaderFrame {
             }
         }
 
-        return grouped.values().stream().collect(Collectors.toList());
+        return grouped.values().stream()
+                .sorted(Comparator.comparing((SearchField field) -> field.freeText))
+                .collect(Collectors.toList());
     }
 
     private String normalizeBaseKey(String key) {
