@@ -63,7 +63,7 @@ public class HeaderFrame {
 
         CustomPanel row1 = createHeaderRow(12);
         row1.add(CustomLabel.of(APP_TITLE).style(s -> s.font(new Font("Malgun Gothic", Font.BOLD, 20))));
-        row1.add(CustomLabel.of("공지: " + container.notice()).style(s -> s.font(new Font("Malgun Gothic", Font.PLAIN, 13))));
+        row1.add(CustomLabel.of("공지사항: " + container.notice()).style(s -> s.font(new Font("Malgun Gothic", Font.PLAIN, 13))));
         header.add(row1);
 
         List<SearchField> fields = buildSearchFields();
@@ -95,11 +95,19 @@ public class HeaderFrame {
 
         CustomPanel actionRow = createHeaderRow(ROW_GAP);
         CustomButton searchButton = CustomButton.of("검색")
-                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT));
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT)
+                        .font(new Font("Malgun Gothic", Font.BOLD, 17))
+                        .background(new Color(189, 189, 189))
+                        .foreground(Color.BLACK));
+        searchButton.setBorder(BorderFactory.createLineBorder(Color.BLACK));
         searchButton.addActionListener(e -> saveCurrentSearchHistory(header));
 
         CustomButton historyButton = CustomButton.of("히스토리")
-                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT));
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT)
+                        .font(new Font("Malgun Gothic", Font.BOLD, 17))
+                        .background(new Color(189, 189, 189))
+                        .foreground(Color.BLACK));
+        historyButton.setBorder(BorderFactory.createLineBorder(Color.BLACK));
         historyButton.addActionListener(e -> openHistoryDialog(header));
 
         actionRow.add(searchButton);
@@ -109,6 +117,7 @@ public class HeaderFrame {
         int requiredHeaderHeight = header.getPreferredSize().height;
         int finalHeaderHeight = Math.max(sizePreset.headerHeight(), requiredHeaderHeight);
         header.setPreferredSize(new Dimension(sizePreset.appWidth(), finalHeaderHeight));
+
 
         return header;
     }
@@ -125,19 +134,19 @@ public class HeaderFrame {
         wrapper.setBackground(Color.WHITE);
         int span = field.slotSpan();
         int width = rowSize * span + (ROW_GAP * (span - 1));
-        int selectBoxWidth = (int) Math.floor(width * 0.95);
+        int componentWidth = (int) Math.floor(width * 0.98);
         wrapper.setPreferredSize(new Dimension(width, FILTER_HEIGHT));
         wrapper.add(CustomLabel.of(field.label));
 
         if (field.freeText) {
-            CustomTextField meaningField = CustomTextField.of().style(s -> s.columns(0).size(selectBoxWidth, COMPONENT_HEIGHT));
+            CustomTextField meaningField = CustomTextField.of().style(s -> s.columns(0).size(componentWidth, COMPONENT_HEIGHT));
             searchInputBindings.add(new SearchInputBinding(field, meaningField::getText));
             wrapper.add(meaningField);
         } else {
             List<String> options = new ArrayList<>();
             options.add("전체");
             options.addAll(field.options);
-            CustomSelectBox selectBox = CustomSelectBox.of(options).style(s -> s.size(selectBoxWidth, COMPONENT_HEIGHT));
+            CustomSelectBox selectBox = CustomSelectBox.of(options).style(s -> s.size(componentWidth, COMPONENT_HEIGHT));
             searchInputBindings.add(new SearchInputBinding(field, () -> {
                 Object selected = selectBox.getSelectedItem();
                 return selected == null ? "" : String.valueOf(selected);
