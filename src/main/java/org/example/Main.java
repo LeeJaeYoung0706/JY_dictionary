@@ -1,14 +1,14 @@
 package org.example;
 
 import org.example.data.ViewContainer;
+import org.example.ui.BodyFrame;
 import org.example.ui.HeaderFrame;
-import org.example.ui.commons.*;
+import org.example.ui.commons.CustomFrame;
+import org.example.ui.commons.CustomPanel;
+import org.example.ui.commons.UiSizePreset;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.*;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class Main {
 
@@ -229,10 +229,8 @@ public class Main {
             CustomPanel header = new HeaderFrame(container, APP_SIZE).build();
             root.add(header, BorderLayout.NORTH);
 
-            CustomPanel body = CustomPanel.flexColumn(8)
-                    .style(s -> s.padding(16));
-            body.add(CustomLabel.of("결과 영역 (다음 단계에서 목록/테이블 구성)")
-                    .style(s -> s.font(new Font("Malgun Gothic", Font.PLAIN, 14))));
+            CustomPanel body = new BodyFrame(container).build();
+
             root.add(body, BorderLayout.CENTER);
 
             CustomFrame frame = CustomFrame.of(APP_TITLE)
@@ -241,5 +239,6 @@ public class Main {
             frame.setVisible(true);
         });
     }
+
 
 }
