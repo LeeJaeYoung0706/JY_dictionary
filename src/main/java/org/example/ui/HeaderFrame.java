@@ -20,11 +20,17 @@ import java.util.stream.Collectors;
 
 public class HeaderFrame {
     private static final String APP_TITLE = "용어사전";
+    // 행에 포함되는 컬럼 ( 아이템 ) 갯수
+    private static final int ROW_ITEM_COUNT = 4;
+    // 아이템 간 간격
+    private static final int ROW_GAP = 10;
+    // 아이템 패널 사이즈
+    private static final int ROW_SIZE = 380;
+    // 아이템 패널 높이
+    private static final int FILTER_HEIGHT = 56;
 
     private final ViewContainer container;
     private final UiSizePreset sizePreset;
-    // 검색조건 행 갯수 사이즈
-    private final int SEARCH_ROW_SIZE = 4;
 
     public HeaderFrame(ViewContainer container, UiSizePreset sizePreset) {
         this.container = container;
@@ -43,12 +49,29 @@ public class HeaderFrame {
         header.add(row1);
 
         List<SearchField> fields = buildSearchFields();
+        CustomPanel row = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+        int remainSlots = ROW_ITEM_COUNT;
 
-        for (int i = 0; i < fields.size(); i += SEARCH_ROW_SIZE) {
-            CustomPanel row = CustomPanel.flexRow(10).style(s -> s.padding(0));
-            for (int j = i; j < Math.min(i + SEARCH_ROW_SIZE, fields.size()); j++) {
-                row.add(createFilterComponent(fields.get(j)));
+        for (SearchField field : fields) {
+            int span = field.slotSpan();
+
+            if (span > remainSlots) {
+                header.add(row);
+                row = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+                remainSlots = ROW_ITEM_COUNT;
             }
+
+            row.add(createFilterComponent(field));
+            remainSlots -= span;
+
+            if (remainSlots == 0) {
+                header.add(row);
+                row = CustomPanel.flexRow(ROW_GAP).style(s -> s.padding(0));
+                remainSlots = ROW_ITEM_COUNT;
+            }
+        }
+
+        if (row.getComponentCount() > 0) {
             header.add(row);
         }
 
@@ -57,16 +80,18 @@ public class HeaderFrame {
 
     private JComponent createFilterComponent(SearchField field) {
         CustomPanel wrapper = CustomPanel.flexColumn(4).style(s -> s.padding(0));
-        wrapper.setPreferredSize(new Dimension(380, 56));
+        int span = field.slotSpan();
+        int width = ROW_SIZE * span + (ROW_GAP * (span - 1));
+        wrapper.setPreferredSize(new Dimension(width, FILTER_HEIGHT));
         wrapper.add(CustomLabel.of(field.label));
 
         if (field.freeText) {
-            wrapper.add(CustomTextField.of().style(s -> s.columns(18)));
+            wrapper.add(CustomTextField.of().style(s -> s.columns(span == 2 ? 42 : 18)));
         } else {
             List<String> options = new ArrayList<>();
             options.add("전체");
             options.addAll(field.options);
-            wrapper.add(CustomSelectBox.of(options).style(s -> s.size(250, 28)));
+            wrapper.add(CustomSelectBox.of(options).style(s -> s.size(span == 2 ? 510 : 250, 28)));
         }
         return wrapper;
     }
@@ -131,6 +156,10 @@ public class HeaderFrame {
         SearchField(String baseKey, String label) {
             this.baseKey = baseKey;
             this.label = label;
+        }
+
+        int slotSpan() {
+            return freeText ? 2 : 1;
         }
     }
 }
