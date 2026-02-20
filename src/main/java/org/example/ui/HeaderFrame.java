@@ -1,5 +1,4 @@
 package org.example.ui;
-
 import org.example.data.SearchHistoryStore;
 import org.example.data.ViewContainer;
 import org.example.ui.commons.CustomButton;
@@ -11,42 +10,39 @@ import org.example.ui.commons.UiSizePreset;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.Comparator;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class HeaderFrame {
     private static final String APP_TITLE = "용어사전";
-    // 행에 포함되는 컬럼 ( 아이템 ) 갯수
     private static final int ROW_ITEM_COUNT = 4;
-    // 아이템 간 간격
     private static final int ROW_GAP = 20;
-    // 헤더 좌우 패딩 (build()와 동일 값 유지)
     private static final int HEADER_PADDING_X = 16;
-    private static final int HEADER_BORDER_WIDTH = 5;
-    // 아이템 패널 높이
+    private static final int HEADER_BORDER_WIDTH = 1;
     private static final int FILTER_HEIGHT = 56;
-    // 버튼 크기
     private static final int SEARCH_BUTTON_WIDTH = 100;
     private static final int COMPONENT_HEIGHT = 28;
 
     private final ViewContainer container;
     private final UiSizePreset sizePreset;
+    private final Consumer<Map<String, String>> onSearch;
     private final SearchHistoryStore historyStore = new SearchHistoryStore();
     private final List<SearchInputBinding> searchInputBindings = new ArrayList<>();
-    // 앱 전체 폭 기준으로 계산된 아이템 패널 폭
     private final int rowSize;
 
-    public HeaderFrame(ViewContainer container, UiSizePreset sizePreset) {
+    public HeaderFrame(ViewContainer container, UiSizePreset sizePreset, Consumer<Map<String, String>> onSearch) {
         this.container = container;
         this.sizePreset = sizePreset;
+        this.onSearch = onSearch;
 
         int horizontalInsets = (HEADER_PADDING_X * 2) + (HEADER_BORDER_WIDTH * 2);
         int availableWidth = sizePreset.appWidth() - horizontalInsets;
@@ -63,7 +59,7 @@ public class HeaderFrame {
 
         CustomPanel row1 = createHeaderRow(12);
         row1.add(CustomLabel.of(APP_TITLE).style(s -> s.font(new Font("Malgun Gothic", Font.BOLD, 20))));
-        row1.add(CustomLabel.of("공지사항: " + container.notice()).style(s -> s.font(new Font("Malgun Gothic", Font.PLAIN, 13))));
+        row1.add(CustomLabel.of("공지: " + container.notice()).style(s -> s.font(new Font("Malgun Gothic", Font.PLAIN, 13))));
         header.add(row1);
 
         List<SearchField> fields = buildSearchFields();
@@ -100,10 +96,17 @@ public class HeaderFrame {
                         .background(new Color(189, 189, 189))
                         .foreground(Color.BLACK));
         searchButton.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-        searchButton.addActionListener(e -> saveCurrentSearchHistory(header));
+        searchButton.addActionListener(e -> {
+            Map<String, String> keyConditions = collectSearchConditionsByKey();
+            Map<String, String> labelConditions = collectSearchConditionsByLabel();
+            if (onSearch != null) {
+                onSearch.accept(keyConditions);
+            }
+            saveCurrentSearchHistory(header, labelConditions);
+        });
 
-        CustomButton historyButton = CustomButton.of("검색히스토리")
-                .style(s -> s.size(SEARCH_BUTTON_WIDTH + 20, COMPONENT_HEIGHT)
+        CustomButton historyButton = CustomButton.of("히스토리")
+                .style(s -> s.size(SEARCH_BUTTON_WIDTH, COMPONENT_HEIGHT)
                         .font(new Font("Malgun Gothic", Font.BOLD, 17))
                         .background(new Color(189, 189, 189))
                         .foreground(Color.BLACK));
@@ -118,10 +121,8 @@ public class HeaderFrame {
         int finalHeaderHeight = Math.max(sizePreset.headerHeight(), requiredHeaderHeight);
         header.setPreferredSize(new Dimension(sizePreset.appWidth(), finalHeaderHeight));
 
-
         return header;
     }
-
 
     private CustomPanel createHeaderRow(int gap) {
         CustomPanel row = CustomPanel.flexRow(gap).style(s -> s.padding(0));
@@ -134,19 +135,19 @@ public class HeaderFrame {
         wrapper.setBackground(Color.WHITE);
         int span = field.slotSpan();
         int width = rowSize * span + (ROW_GAP * (span - 1));
-        int componentWidth = (int) Math.floor(width * 0.98);
+        int selectBoxWidth = (int) Math.floor(width * 0.95);
         wrapper.setPreferredSize(new Dimension(width, FILTER_HEIGHT));
         wrapper.add(CustomLabel.of(field.label));
 
         if (field.freeText) {
-            CustomTextField meaningField = CustomTextField.of().style(s -> s.columns(0).size(componentWidth, COMPONENT_HEIGHT));
+            CustomTextField meaningField = CustomTextField.of().style(s -> s.columns(0).size(selectBoxWidth, COMPONENT_HEIGHT));
             searchInputBindings.add(new SearchInputBinding(field, meaningField::getText));
             wrapper.add(meaningField);
         } else {
             List<String> options = new ArrayList<>();
             options.add("전체");
             options.addAll(field.options);
-            CustomSelectBox selectBox = CustomSelectBox.of(options).style(s -> s.size(componentWidth, COMPONENT_HEIGHT));
+            CustomSelectBox selectBox = CustomSelectBox.of(options).style(s -> s.size(selectBoxWidth, COMPONENT_HEIGHT));
             searchInputBindings.add(new SearchInputBinding(field, () -> {
                 Object selected = selectBox.getSelectedItem();
                 return selected == null ? "" : String.valueOf(selected);
@@ -200,16 +201,35 @@ public class HeaderFrame {
                 .collect(Collectors.toList());
     }
 
-    private void saveCurrentSearchHistory(Component parent) {
-        try {
-            Map<String, String> conditions = new LinkedHashMap<>();
-            for (SearchInputBinding binding : searchInputBindings) {
-                String value = binding.valueSupplier.get();
-                if (value == null || value.isBlank() || "전체".equals(value)) {
-                    continue;
-                }
-                conditions.put(binding.field.label, value.trim());
+    private Map<String, String> collectSearchConditionsByLabel() {
+        Map<String, String> conditions = new LinkedHashMap<>();
+        for (SearchInputBinding binding : searchInputBindings) {
+            String value = binding.valueSupplier.get();
+            if (value == null || value.isBlank() || "전체".equals(value)) {
+                continue;
             }
+            conditions.put(binding.field.label, value.trim());
+        }
+        return conditions;
+    }
+
+    private Map<String, String> collectSearchConditionsByKey() {
+        Map<String, String> conditions = new LinkedHashMap<>();
+        for (SearchInputBinding binding : searchInputBindings) {
+            String value = binding.valueSupplier.get();
+            if (value == null || value.isBlank() || "전체".equals(value)) {
+                continue;
+            }
+            String normalizedValue = value.trim();
+            for (String key : binding.field.keys) {
+                conditions.put(key, normalizedValue);
+            }
+        }
+        return conditions;
+    }
+
+    private void saveCurrentSearchHistory(Component parent, Map<String, String> conditions) {
+        try {
             historyStore.append(conditions);
         } catch (RuntimeException ex) {
             JOptionPane.showMessageDialog(parent, ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);

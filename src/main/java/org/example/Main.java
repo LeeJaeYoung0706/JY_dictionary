@@ -226,13 +226,12 @@ public class Main {
             root.style(s -> s.padding(0));
             root.setBackground(new Color(245, 247, 250));
 
-            CustomPanel header = new HeaderFrame(container, APP_SIZE).build();
-            root.add(header, BorderLayout.NORTH);
-
-            CustomPanel body = new BodyFrame(container, APP_SIZE).build();
-
-
+            BodyFrame bodyFrame = new BodyFrame(container, APP_SIZE);
+            CustomPanel body = bodyFrame.build();
             root.add(body, BorderLayout.CENTER);
+
+            CustomPanel header = new HeaderFrame(container, APP_SIZE, bodyFrame::applySearchConditions).build();
+            root.add(header, BorderLayout.NORTH);
 
             CustomFrame frame = CustomFrame.of(APP_TITLE)
                     .style(s -> s.preset(APP_SIZE));
