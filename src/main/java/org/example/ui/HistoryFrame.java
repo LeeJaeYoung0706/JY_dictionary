@@ -1,9 +1,15 @@
 package org.example.ui;
 
 import org.example.data.SearchHistoryStore;
+import org.example.ui.commons.CustomButton;
+import org.example.ui.commons.CustomDialog;
+import org.example.ui.commons.CustomMessageBox;
 import org.example.ui.commons.CustomPanel;
+import org.example.ui.commons.CustomScrollPane;
+import org.example.ui.commons.CustomTable;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.ArrayList;
@@ -27,8 +33,8 @@ public class HistoryFrame {
     }
 
     public void open(Component parent) {
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(parent), "검색 히스토리", Dialog.ModalityType.MODELESS);
-        dialog.setSize(1180, 520);
+        CustomDialog dialog = CustomDialog.of(SwingUtilities.getWindowAncestor(parent), "검색 히스토리")
+                .style(s -> s.modalityType(Dialog.ModalityType.MODELESS).size(1180, 520));
         dialog.setLocationRelativeTo(parent);
 
         List<String> conditionColumns = collectConditionColumns();
@@ -57,44 +63,33 @@ public class HistoryFrame {
                 return false;
             }
         };
+        CustomTable historyTable = CustomTable.of(tableModel);
+        historyTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
-        JTable historyTable = new JTable(tableModel);
-        historyTable.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
-        historyTable.setRowHeight(24);
-        historyTable.getTableHeader().setFont(new Font("Malgun Gothic", Font.BOLD, 12));
-        historyTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-
-        historyTable.getColumnModel().getColumn(0).setPreferredWidth(50);
-        historyTable.getColumnModel().getColumn(0).setMaxWidth(60);
-        historyTable.getColumnModel().getColumn(1).setPreferredWidth(170);
-        historyTable.getColumnModel().getColumn(1).setMinWidth(150);
-
-        for (int i = 2; i < historyTable.getColumnModel().getColumnCount(); i++) {
-            historyTable.getColumnModel().getColumn(i).setPreferredWidth(150);
-            historyTable.getColumnModel().getColumn(i).setMinWidth(120);
-        }
 
         CustomPanel topPanel = CustomPanel.of(new BorderLayout()).style(s -> s.padding(8, 8, 8, 8));
         topPanel.setBackground(Color.WHITE);
-        JButton reSearchButton = new JButton("다시 검색");
-        reSearchButton.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+        CustomButton reSearchButton = CustomButton.of("다시 검색")
+                .style(s -> s.font(new Font("Malgun Gothic", Font.BOLD, 13))
+                        .background(new Color(189, 189, 189))
+                        .foreground(Color.BLACK)
+                        .size(100, 28)
+                );
+        reSearchButton.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        reSearchButton.setFocusable(false);
+        reSearchButton.setRequestFocusEnabled(false);
         reSearchButton.addActionListener(e -> {
             int selectedRow = historyTable.getSelectedRow();
             if (selectedRow < 0) {
-                JOptionPane.showMessageDialog(dialog, "다시 검색할 히스토리를 선택해주세요.", "안내", JOptionPane.INFORMATION_MESSAGE);
+                CustomMessageBox.showInfo(dialog, "다시 검색할 히스토리를 선택해주세요.", "안내");
                 return;
             }
 
-            int confirmed = JOptionPane.showConfirmDialog(
-                    dialog,
-                    "다시 검색하시겠습니까?",
-                    "확인",
-                    JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.QUESTION_MESSAGE
-            );
-            if (confirmed != JOptionPane.OK_OPTION) {
+            boolean confirmed = CustomMessageBox.confirmOkCancel(dialog, "다시 검색하시겠습니까?", "확인");
+            if (!confirmed) {
                 return;
             }
+
 
             Map<String, String> selectedConditions = new LinkedHashMap<>();
             for (int i = 0; i < conditionColumns.size(); i++) {
@@ -112,15 +107,66 @@ public class HistoryFrame {
         });
         topPanel.add(reSearchButton, BorderLayout.EAST);
 
-        JScrollPane scrollPane = new JScrollPane(historyTable);
+        CustomScrollPane scrollPane = CustomScrollPane.of(historyTable);
+        historyTable.setFillsViewportHeight(true);
+        applyDynamicColumnWidth(historyTable, scrollPane);
+        scrollPane.getViewport().addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                applyDynamicColumnWidth(historyTable, scrollPane);
+            }
+        });
 
-        JPanel root = new JPanel(new BorderLayout());
+        CustomPanel tableContainer = CustomPanel.of(new BorderLayout()).style(s -> s.padding(0));
+        tableContainer.setBorder(new EmptyBorder(12, 12, 12, 12));
+        tableContainer.add(scrollPane, BorderLayout.CENTER);
+
+        CustomPanel root = CustomPanel.of(new BorderLayout()).style(s -> s.padding(0));
         root.add(topPanel, BorderLayout.NORTH);
-        root.add(scrollPane, BorderLayout.CENTER);
+        root.add(tableContainer, BorderLayout.CENTER);
 
         dialog.setContentPane(root);
         dialog.setVisible(true);
     }
+
+    private void applyDynamicColumnWidth(JTable historyTable, JScrollPane scrollPane) {
+        int columnCount = historyTable.getColumnModel().getColumnCount();
+        if (columnCount == 0) {
+            return;
+        }
+
+        int viewportWidth = scrollPane.getViewport().getWidth();
+        if (viewportWidth <= 0) {
+            viewportWidth = scrollPane.getWidth();
+        }
+        if (viewportWidth <= 0) {
+            return;
+        }
+
+        int numberColumnWidth = Math.max(50, (int) Math.floor(viewportWidth * 0.06));
+        int searchedAtColumnWidth = Math.max(160, (int) Math.floor(viewportWidth * 0.18));
+        int remainingWidth = Math.max(0, viewportWidth - numberColumnWidth - searchedAtColumnWidth);
+        int conditionColumnCount = Math.max(0, columnCount - 2);
+        int eachConditionWidth = conditionColumnCount == 0
+                ? 0
+                : Math.max(120, (int) Math.floor(remainingWidth / (double) conditionColumnCount));
+
+        historyTable.getColumnModel().getColumn(0).setPreferredWidth(numberColumnWidth);
+        historyTable.getColumnModel().getColumn(0).setMinWidth(50);
+        historyTable.getColumnModel().getColumn(0).setMaxWidth(120);
+
+        if (columnCount > 1) {
+            historyTable.getColumnModel().getColumn(1).setPreferredWidth(searchedAtColumnWidth);
+            historyTable.getColumnModel().getColumn(1).setMinWidth(150);
+            historyTable.getColumnModel().getColumn(1).setMaxWidth(280);
+        }
+
+        for (int i = 2; i < columnCount; i++) {
+            historyTable.getColumnModel().getColumn(i).setPreferredWidth(eachConditionWidth);
+            historyTable.getColumnModel().getColumn(i).setMinWidth(120);
+        }
+    }
+
 
     private List<String> collectConditionColumns() {
         LinkedHashSet<String> orderedKeys = new LinkedHashSet<>(baseConditionColumns);

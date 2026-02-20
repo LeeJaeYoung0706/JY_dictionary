@@ -3,6 +3,7 @@ import org.example.data.SearchHistoryStore;
 import org.example.data.ViewContainer;
 import org.example.ui.commons.CustomButton;
 import org.example.ui.commons.CustomLabel;
+import org.example.ui.commons.CustomMessageBox;
 import org.example.ui.commons.CustomPanel;
 import org.example.ui.commons.CustomSelectBox;
 import org.example.ui.commons.CustomTextField;
@@ -97,6 +98,8 @@ public class HeaderFrame {
                         .background(new Color(189, 189, 189))
                         .foreground(Color.BLACK));
         searchButton.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        searchButton.setFocusable(false);
+        searchButton.setRequestFocusEnabled(false);
         searchButton.addActionListener(e -> {
             Map<String, String> keyConditions = collectSearchConditionsByKey();
             Map<String, String> labelConditions = collectSearchConditionsByLabel();
@@ -112,6 +115,8 @@ public class HeaderFrame {
                         .background(new Color(189, 189, 189))
                         .foreground(Color.BLACK));
         historyButton.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        historyButton.setFocusable(false);
+        historyButton.setRequestFocusEnabled(false);
         historyButton.addActionListener(e -> openHistoryDialog(header));
 
         actionRow.add(searchButton);
@@ -142,7 +147,7 @@ public class HeaderFrame {
 
         if (field.freeText) {
             CustomTextField meaningField = CustomTextField.of().style(s -> s.columns(0).size(selectBoxWidth, COMPONENT_HEIGHT));
-            searchInputBindings.add(new SearchInputBinding(field, meaningField::getText));
+            searchInputBindings.add(new SearchInputBinding(field, meaningField::getText, meaningField::setText));
             wrapper.add(meaningField);
         } else {
             List<String> options = new ArrayList<>();
@@ -152,6 +157,21 @@ public class HeaderFrame {
             searchInputBindings.add(new SearchInputBinding(field, () -> {
                 Object selected = selectBox.getSelectedItem();
                 return selected == null ? "" : String.valueOf(selected);
+            }, value -> {
+                String normalizedValue = (value == null || value.isBlank()) ? "전체" : value.trim();
+                ComboBoxModel<String> model = selectBox.getModel();
+                boolean exists = false;
+                for (int i = 0; i < model.getSize(); i++) {
+                    if (normalizedValue.equals(model.getElementAt(i))) {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists && !"전체".equals(normalizedValue)) {
+                    selectBox.addItem(normalizedValue);
+                }
+                selectBox.setSelectedItem(normalizedValue);
             }));
             wrapper.add(selectBox);
         }
@@ -233,7 +253,7 @@ public class HeaderFrame {
         try {
             historyStore.append(conditions);
         } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(parent, ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+            CustomMessageBox.showError(parent, ex.getMessage(), "오류");
         }
     }
 
@@ -242,7 +262,7 @@ public class HeaderFrame {
         try {
             items = historyStore.loadAll();
         } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(parent, ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+            CustomMessageBox.showError(parent, ex.getMessage(), "오류");
             return;
         }
 
@@ -256,6 +276,8 @@ public class HeaderFrame {
         if (onSearch == null || selectedConditions == null || selectedConditions.isEmpty()) {
             return;
         }
+
+        applySearchConditionsToInputs(selectedConditions);
 
         Map<String, String> keyConditions = new LinkedHashMap<>();
         for (SearchField field : searchFields) {
@@ -271,6 +293,14 @@ public class HeaderFrame {
         onSearch.accept(keyConditions);
     }
 
+    private void applySearchConditionsToInputs(Map<String, String> selectedConditions) {
+        for (SearchInputBinding binding : searchInputBindings) {
+            String selectedValue = selectedConditions.get(binding.field.label);
+            binding.valueApplier.accept(selectedValue == null ? "" : selectedValue.trim());
+        }
+    }
+
+
     private String normalizeBaseKey(String key) {
         String lower = key.toLowerCase(Locale.ROOT);
         if (lower.startsWith("korean")) {
@@ -279,13 +309,16 @@ public class HeaderFrame {
         return key;
     }
 
+
     private static final class SearchInputBinding {
         final SearchField field;
         final Supplier<String> valueSupplier;
+        final Consumer<String> valueApplier;
 
-        SearchInputBinding(SearchField field, Supplier<String> valueSupplier) {
+        SearchInputBinding(SearchField field, Supplier<String> valueSupplier, Consumer<String> valueApplier) {
             this.field = field;
             this.valueSupplier = valueSupplier;
+            this.valueApplier = valueApplier;
         }
     }
 
